@@ -2,6 +2,7 @@ package com.yc17.ycgate.pipelines
 
 import com.yc17.ycgate.sesame._
 import com.yc17.ycgate.GateConfig.gateHome
+import com.yc17.ycgate.prs.common.AnnotationSetTransfer
 import com.yc17.ycgate.prs.en._
 
 object EnglishLangPipeline extends Pipeline {
@@ -15,7 +16,6 @@ object EnglishLangPipeline extends Pipeline {
     AnnieGazetteer(),
     NumbersTagger(),
     YCGazetteer(),
-    MarkUpperCaseSentences(),
     POSTagger.LowerCase(),
     POSTagger.UpperCase(),
     Morpher(),
