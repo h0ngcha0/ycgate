@@ -1,0 +1,43 @@
+calendar days	unit=day	value=1	days=1
+day	unit=day	value=1	days=1
+days	unit=day	value=1	days=1
+dey	unit=day	value=1	days=1
+daye	unit=day	value=1	days=1
+clays	unit=day	value=1	days=1
+Business days	unit=day	value=1	days=1
+business day	unit=day	value=1	days=1
+working days	unit=day	value=1	days=1
+week	unit=week	value=1	days=7
+weeks	unit=week	value=1	days=7
+fortnight	unit=week	value=2	days=14
+fortnights	unit=week	value=2	days=14
+month	unit=month	value=1	days=30.41
+months	unit=month	value=1	days=30.41
+calendar months	unit=month	value=1	days=30.41
+quarter	unit=month	value=3	days=91.25
+quarters	unit=month	value=3	days=91.25
+fiscal quarter	unit=month	value=3	days=91.25
+fiscal quarters	unit=month	value=3	days=91.25
+year	unit=year	value=1	days=365
+Vear	unit=year	value=1	days=365
+years	unit=year	value=1	days=365
+financial year	unit=year	value=1	days=365
+financial years	unit=year	value=1	days=365
+fiscal year	unit=year	value=1	days=365
+tax year	unit=year	value=1	days=365
+decade	unit=year	value=10	days=3650
+decades	unit=year	value=10	days=3650
+century	unit=year	value=100	days=36500
+centuries	unit=year	value=100	days=36500
+half-year	unit=year	value=0.5	days=182.5
+half year	unit=year	value=0.5	days=182.5
+annual	unit=year	value=1	days=365
+annually	unit=year	value=1	days=365
+anniversary	unit=year	value=1	days=365
+snrwersary	unit=year	value=1	days=365
+monthly	unit=month	value=1	days=30.41
+bimonthly	unit=month	value=2	days=60.83
+bi-monthly	unit=month	value=2	days=60.83
+ono year	unit=year	value=1	days=365
+yew	unit=year	value=1	days=365
+yeer	unit=year	value=1	days=365	

@@ -1,0 +1,17 @@
+.idea/
+/.settings/
+/build/
+/target/
+/.DS_Store
+/project/target
+/project/project
+/project/gatePlugins
+/project/gate
+.ensime*
+logs/
+.wercker/
+plugins/*/target
+/.classpath
+/.project
+workbench.xmi
+.idea

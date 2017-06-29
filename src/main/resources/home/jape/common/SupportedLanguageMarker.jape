@@ -1,0 +1,25 @@
+Phase:	LanguageIdentification
+Input:  html
+Options: control = once
+
+// Mark if a language is supported or not.
+
+Rule: LangID
+(
+ ({html})
+)
+:match
+-->
+{
+    String norm = (String)doc.getFeatures().get("lang");
+
+    if(norm != null) {
+        if(norm.equals("en") ||
+           norm.equals("sv") ) {
+            doc.getFeatures().put("language_supported", true);
+            return;
+        }
+    }
+
+    doc.getFeatures().put("language_supported", false);
+}

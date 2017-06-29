@@ -1,0 +1,39 @@
+Phase:	XHTMLLanguageIdentification
+Input:  meta
+Options: control = appelt
+
+Rule: XHTMLLangID
+Priority: 100
+(
+ ({meta.name==Content-Language})
+)
+:match
+-->
+{
+    Annotation lookup = bindings.get("match").iterator().next();
+    FeatureMap features = Factory.newFeatureMap();
+    String norm = (String)lookup.getFeatures().get("content");
+    if (norm != null)
+        features.put("lang", norm);
+    features.put("rule","XHTMLLangID");
+    outputAS.add(lookup.getStartNode(),lookup.getEndNode(),"XHTMLLangID",features);
+
+    doc.getFeatures().put("lang", norm);
+
+    if(norm.equals("en")) {
+        doc.getFeatures().put("XHTML_Lang","en");
+    }
+    else {
+        doc.getFeatures().put("XHTML_Lang","noten");
+    }
+}
+
+Rule: XHTMLLangIDNone
+Priority: 10
+(
+ ({meta})
+)
+-->
+{
+    doc.getFeatures().put("lang","en");
+}

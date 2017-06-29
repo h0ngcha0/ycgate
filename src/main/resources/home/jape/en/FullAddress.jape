@@ -1,0 +1,459 @@
+Phase:	FullAddress
+Input:  Token Lookup Street Postcode PartyDescriptorBlock
+Options: control = appelt
+
+Macro: FULL_ADDRESS_PREFIX
+(
+ ({Token.root == "have"}|{Token.root == "with"})?
+ ({Token.category ==~ "WP.?"} | {Token.category == "PRP$"}| {Token.category == "DT"})?
+ ({Token.string ==~ "registered|principal|mailing|head|business"})[0,2]
+ (({Token.string ==~ "offices?"})|({Token.string == "place"}{Token.string == "of"}{Token.string == "business"})|({Token.string == "address"}))
+ (
+ {Token.category=="CC"}
+ ({Token.string ==~ "registered|principal|mailing|head|business"})[0,2]
+ (({Token.string ==~ "offices?"})|({Token.string == "place"}{Token.string == "of"}{Token.string == "business"})|({Token.string == "address"}))
+ )?
+ ({Token.root == "be"})?
+ ({Token.root == "locate"}|{Token.root == "situate"}|{Token.root == "be"})?
+ ({Token.string == "at"}|{Token.root == "be"})
+)
+
+Macro: SHORT_ADDRESS_PREFIX
+(
+ {Token.string == "at"}|{Token.string == "of"}
+)
+
+Macro: ADDRESS_PREFIX
+(
+ FULL_ADDRESS_PREFIX|SHORT_ADDRESS_PREFIX
+)
+
+// 37 Falmouth Road, Bristol, Avon, BS7 8PX, United Kingdom
+Rule: ukAddress1
+Priority: 50
+(ADDRESS_PREFIX)?:prefix
+(
+ ({Street}):firstLine
+ ({Token.string == ","})?
+ ({Lookup.minorType == "city"}):city
+ ({Token.string == ","})?
+ (
+  ({Lookup.minorType == "region"}):region
+  ({Token.string == ","})?
+ )?
+ ({Postcode}):postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}):country
+):address
+-->
+:prefix.AddressPrefix = {rule = "fullAddress1",Type="Text"},
+:address.FullAddress = {rule = "fullAddress1",Type="Text"},
+:firstLine.FirstLine = {rule = "fullAddress1",Type="Text"},
+:city.City = {rule = "fullAddress1",Type="Text"},
+:region.Region = {rule = "fullAddress1",Type="Text"},
+:postcode.Postcode = {rule = "fullAddress1",Type="Text"},
+:country.Country = {rule = "fullAddress1",Type="Text"}
+
+// Deals with cases where a city is not identified properly
+// but the other elements are pretty certain
+// e.g. High Street, [Hartley Wintney], RG27 8NZ, United Kingdom
+Rule: ukAddress2
+Priority: 40
+(ADDRESS_PREFIX)?:prefix
+(
+ ({Street}):firstLine
+ ({Token.string == ","})?
+ (({Token.orth == "upperInitial"})[1,4]):city
+ ({Token.string == ","})?
+ (
+  ({Lookup.minorType == "region"}):region
+  ({Token.string == ","})?
+ )?
+ ({Postcode}):postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}):country
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "fullAddress2",Type="Text"},
+:address.FullAddress = {rule = "fullAddress2",Type="Text"},
+:firstLine.FirstLine = {Type="Text"},
+:city.City = {Type="Text"},
+:region.Region = {Type="Text"},
+:postcode.Postcode = {Type="Text"},
+:country.Country = {Type="Text"}
+
+// slightly different syntax for US addresses
+// e.g. 5480 Great America Parkway, Santa Clara, CA, 95054, United States
+Rule: usAddress
+Priority: 30
+(ADDRESS_PREFIX)?:prefix
+(
+ (
+  (
+   {Token.kind == "number"}
+   ({Token.string == ","})?
+   ({Token.orth == "upperInitial"})[1,4]
+   ({Token.string == ","})?
+  ):firstLine
+ )?
+ ({Lookup.minorType == "city"}):city
+ ({Token.string == ","})?
+ (
+  {Token.orth == "allCaps",Token@length<=3}
+  ({Token.string == ","})?
+ )?
+ (
+  ({Lookup.minorType == "USstates"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region
+ )?
+ ({Token.kind == "number"}):postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}):country
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "usAddress",Type="Text"},
+:address.FullAddress = {rule = "usAddress",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+// highly lexicaled pattern to detect generic addresses
+// e.g. registered office at 6th Floor, South Bank House, Barrow Street, Dublin 4 Ireland
+Rule: genericAddressStartingWithAT
+Priority: 20
+(FULL_ADDRESS_PREFIX):prefix
+(
+ (
+  (
+   ({Token.string != "and"})[1,5]
+   ({Token.string == ","})?
+  )[1,5]
+ ):firstLine
+ (
+  ({Lookup.minorType == "country"}):country|
+  ({Lookup.minorType == "city"}):city
+ )
+ ({Token.string == ","})?
+ ({Token})[0,2]
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType ==~ ".._states_codes"}):region
+ ({Token.string == ","})?
+ ({Token.kind==number})?:postcode
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "atAddress",Type="Text"},
+:address.FullAddress = {rule = "atAddress",Type="Text"},
+:firstLine.FirstLine = {},
+:city.City = {Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+// same as above but uses annotations Street and region
+// does not need a postcode
+// e.g. The Courtyard, 2-4 London Road, Newbury, Berkshire RG13 1JL, England;
+Rule: adressWithRegionAndCountryStartingWithAT
+Priority: 30
+(ADDRESS_PREFIX):prefix
+(
+ (
+  (
+   ({Token})[1,5]
+   ({Token.string == ","})?
+  )?
+  {Street}
+ ):firstLine
+ ({Token.string == ","})?
+ (({Token.orth == "upperInitial"})[1,4]):city
+ ({Token.string == ","})?
+ ({Lookup.minorType == "region"}):region
+ ({Token.string == ","})?
+ (({Token})[0,4]):postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}|{Lookup.minorType == "world"}):country
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "atAddress2",Type="Text"},
+:address.FullAddress = {rule = "atAddress2",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+// variant of the rule above
+// don't necessarily have a country or county
+// but a city and a postcode
+// at Hubwoo House, Mere Park, Dedmere Road, Marlow UK SL7 1PD
+// at Unilever House, 100 Victoria Embankment, London EC4Y 0DY
+Rule: prefixedAdressWithPostCodeAndCity
+Priority: 30
+(ADDRESS_PREFIX):prefix
+(
+ (
+  (
+   ({Token})[1,5]
+   ({Token.string == ","})?
+  )[0,2]
+  ({Street})?
+ ):firstLine
+ ({Token.string == ","})?
+ (
+  ({Token.orth == "upperInitial"})[1,4]
+  |{Lookup.minorType == "city"}
+ ):city
+ ({Token.string == ","})?
+ (
+  ({Lookup.minorType ==~ "country|world"}):country
+  ({Token.string == ","})?
+ )?
+ (
+  ({Lookup.minorType ==~ "province|USstates"}|{Lookup.majorType ==~ ".._states_codes"}):region
+  ({Token.string == ","})?
+ )?
+ ({Postcode}):postcode
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "prefixedAdressWithPostCodeAndCity",Type="Text"},
+:address.FullAddress = {rule = "prefixedAdressWithPostCodeAndCity",Type="Text"},
+:firstLine.FirstLine = {},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+// variant of the rule above but does not expect
+// a clear UK postcode
+Rule: prefixedAdressWithPostCodeAndCity2
+Priority: 30
+(FULL_ADDRESS_PREFIX):prefix
+(
+ (
+  (
+   ({Token})[1,5]
+   ({Token.string == ","})?
+  )[0,2]
+  ({Street})?
+ ):firstLine
+ ({Token.string == ","})?
+ (
+  ({Token.orth == "upperInitial"})[1,4]
+  |{Lookup.minorType == "city"}
+ ):city
+ ({Token.string == ","})?
+ (
+  ({Lookup.minorType ==~ "country|world"}):country
+  ({Token.string == ","})?
+ )?
+ (
+  ({Lookup.minorType ==~ "province|USstates"}|{Lookup.majorType ==~ ".._states_codes"}):region
+  ({Token.string == ","})?
+ )?
+ ({Postcode}|{Token.kind==number, Token.length>3}):postcode
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "prefixedAdressWithPostCodeAndCity2",Type="Text"},
+:address.FullAddress = {rule = "prefixedAdressWithPostCodeAndCity2",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+
+// variant of the rule above where postcode
+// is before the city
+Rule: prefixedAdressWithPostCodeAndCityEUROPE
+Priority: 30
+(FULL_ADDRESS_PREFIX):prefix
+(
+ (
+  (
+   ({Token})[1,5]
+   ({Token.string == ","})?
+  )[0,2]
+  ({Street})?
+ ):firstLine
+ ({Token.string == ","})?
+ ({Postcode}|{Token.kind==number, Token.length>3}):postcode
+ ({Token.string == ","})?
+ (
+  ({Token.orth == "upperInitial"}|{Token.string == "/"})[1,4]
+  |{Lookup.minorType == "city"}
+ ):city
+ ({Token.string == ","})?
+ (
+  ({Lookup.minorType ==~ "country|world"}):country
+  ({Token.string == ","})?
+ )?
+ (
+  ({Lookup.minorType ==~ "province|USstates"}|{Lookup.majorType ==~ ".._states_codes"}):region
+  ({Token.string == ","})?
+ )?
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "prefixedAdressWithPostCodeAndCityEUROPE",Type="Text"},
+:address.FullAddress = {rule = "prefixedAdressWithPostCodeAndCityEUROPE",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+
+// if we have found a Street then a number followed by a Country
+// then this is a full address
+// PO Box 1746 Saxonwold 2132 Gauteng South Africa
+Rule: StreetRegionCountry
+Priority: 50
+(ADDRESS_PREFIX)?:prefix
+(
+ (
+ {Street}):firstLine
+ ({Token.string == ","})?
+ (({Token.orth == "upperInitial"})[1,4]):city
+ ({Token.string == ","})?
+ ({Token.kind==number}):postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}|{Lookup.minorType == "world"}):country
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "StreetRegionCountry",Type="Text"},
+:address.FullAddress = {rule = "StreetRegionCountry",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+
+// a risky one : jsut a street, something that looks
+// like a city and a region
+// allows for a bit of noise between the city and the region
+Rule: StreetCityRegion
+Priority: 10
+(ADDRESS_PREFIX)?:prefix
+(
+ (({Token.kind==number})?
+  {Street}
+  ({Token.string == ","})?
+  ({Token.orth == "upperInitial"}|{Token.kind==number})[0,4]
+ ):firstLine
+ ({Token.string == ","})?
+ (({Token.orth == "upperInitial"})[1,4]):city
+ ({Token.string == ","})?
+ ({Token})[0,2]
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region
+ ({Token.kind==number})?:postcode
+ (
+  ({Token.string == ","})?
+  ({Lookup.minorType == "country"}|{Lookup.minorType == "world"}):country
+ )?
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "StreetCityRegion",Type="Text"},
+:address.FullAddress = {rule = "StreetCityRegion",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+
+// variant where we have a country but not necessarily a region or a postcode
+// 1234 Main Street, Anytown, USA
+Rule: StreetCityCountry
+Priority: 10
+(ADDRESS_PREFIX)?:prefix
+(
+ (
+  {Street}
+  ({Token.string == ","})?
+  ({Token.orth == "upperInitial"}|{Token.kind==number})[0,4]
+ ):firstLine
+ ({Token.string == ","})?
+ (({Token.orth == "upperInitial"})[1,4]):city
+ ({Token.string == ","})?
+ ({Token})[0,2]
+ (({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region)?
+ ({Token.kind==number})?:postcode
+ ({Token.string == ","})?
+ ({Lookup.minorType == "country"}):country
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "StreetCityCountry",Type="Text"},
+:address.FullAddress = {rule = "StreetCityCountry",Type="Text"},
+:firstLine.FirstLine = { Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"},
+:postcode.Postcode = { Type="Text"},
+:country.Country = { Type="Text"}
+
+
+
+Rule: JustCityRegion
+Priority: 10
+(ADDRESS_PREFIX)?:prefix
+(
+ ({Lookup.minorType == "city"}):city
+ ({Token.string == ","})?
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}):region
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "CityRegion",Type="Text"},
+:address.FullAddress = {rule = "CityRegion",Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = { Type="Text"}
+
+// want to make sure that the us codes are used only for US cities
+// to avoid things like London, or
+Rule: JustUSCityRegion
+Priority: 20
+(ADDRESS_PREFIX)?:prefix
+(
+ ({Lookup.minorType == "regionUSACities"}):city
+ ({Token.string == ","})?
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region
+)
+:address
+-->
+:prefix.AddressPrefix = {rule = "USCityRegion",Type="Text"},
+:address.FullAddress = {rule = "USCityRegion",Type="Text"},
+:city.City = { Type="Text"},
+:region.Region = {Type="Text"}
+
+// use info about party descriptors to infer that whatever is in between must be an address
+// good for cases where one of the elements in the address is incorrect
+// e.g LineSider Communications, Inc. 529 Main St., Charles town, !^LA 02129 (the "Company")
+Rule: ORGSandPD
+Priority: 20
+(ADDRESS_PREFIX)?:prefix
+(
+ ({Street}):firstLine
+ ({Token.string == ","})?
+ ({Token})[0,10]
+ ({Lookup.minorType == "region"}|{Lookup.minorType == "province"}|{Lookup@cleanString ==~ "[A-Z]+", Lookup.majorType == "us_states_codes"}):region
+ ({Token.string == ","})?
+ ({Token.kind==number})?:postcode
+)
+:address
+ {PartyDescriptorBlock}
+-->
+:prefix.AddressPrefix = {rule = "ORGSandPD",Type="Text"},
+:address.FullAddress = {rule = "ORGSandPD",Type="Text"},
+:firstLine.FirstLine = {Type="Text"},
+:postcode.Postcode = {Type="Text"},
+:region.Region = {Type="Text"}
